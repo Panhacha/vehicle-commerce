@@ -1,0 +1,61 @@
+﻿services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: vehicle_commerce_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword2026
+      POSTGRES_DB: vehicle_commerce
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../backend/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - vehicle_net
+
+  # 2. Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: vehicle_commerce_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - vehicle_net
+
+  # 3. Go Backend API
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: vehicle_commerce_api
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgrespassword2026
+      DB_NAME: vehicle_commerce
+      DB_SSLMODE: disable
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the environment or .env file}
+      TELEGRAM_BOT_TOKEN: ""
+      TELEGRAM_ALERT_CHAT_ID: ""
+      FRONTEND_URL: "http://localhost:3000"
+    ports:
+      - "8080:8080"
+    networks:
+      - vehicle_net
+
+volumes:
+  pgdata:
+
+networks:
+  vehicle_net:
+    driver: bridge

@@ -1,0 +1,11 @@
+﻿{
+  "name": "vehicle-commerce-system",
+  "version": "1.0.0",
+  "description": "Vehicle E-Commerce & Multi-Branch Management System",
+  "scripts": {
+    "start": "cmd /c start.bat",
+    "stop": "cmd /c stop.bat",
+    "docker:up": "docker compose -f deploy/docker-compose.yml up -d",
+    "docker:down": "docker compose -f deploy/docker-compose.yml down"
+  }
+}
