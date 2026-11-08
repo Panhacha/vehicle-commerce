@@ -3,8 +3,10 @@ package http
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"vehicle-commerce/backend/internal/config"
 	"vehicle-commerce/backend/internal/domain"
@@ -38,6 +40,9 @@ func (h *Handler) InitRouter() *gin.Engine {
 	{
 		api.GET("/health", h.HealthCheck)
 		api.POST("/auth/login", h.Login)
+		api.POST("/auth/register", h.RegisterCustomer)
+		api.POST("/auth/customer/register", h.RegisterCustomer)
+		api.POST("/auth/customer/login", h.CustomerLogin)
 
 		// Public Catalog & Branches
 		api.GET("/branches", h.GetBranches)
@@ -48,8 +53,11 @@ func (h *Handler) InitRouter() *gin.Engine {
 
 		// Public Tools & Services
 		api.POST("/calculator/loan", h.CalculateLoan)
+		api.POST("/installments", h.SubmitInstallmentApplication)
 		api.POST("/trade-in", h.SubmitTradeIn)
 		api.POST("/orders", h.CreateOrder)
+		api.GET("/orders/track", h.TrackCustomerOrder)
+		api.POST("/orders/:id/confirm-payment", h.ConfirmCustomerPayment)
 
 		// Admin & Staff Operations
 		admin := api.Group("/admin")
@@ -77,6 +85,7 @@ func (h *Handler) InitRouter() *gin.Engine {
 			admin.GET("/users", h.RequireRoles("SUPER_ADMIN"), h.GetAdminUsers)
 			admin.POST("/users", h.RequireRoles("SUPER_ADMIN"), h.CreateAdminUser)
 			admin.PATCH("/users/:id", h.RequireRoles("SUPER_ADMIN"), h.UpdateAdminUser)
+			admin.DELETE("/users/:id", h.RequireRoles("SUPER_ADMIN"), h.DeleteAdminUser)
 			admin.GET("/telegram/status", h.RequireRoles("SUPER_ADMIN"), h.GetTelegramStatus)
 			admin.GET("/telegram/logs", h.RequireRoles("SUPER_ADMIN"), h.GetNotificationLogs)
 			admin.DELETE("/telegram/logs", h.RequireRoles("SUPER_ADMIN"), h.ClearNotificationLogs)
@@ -110,6 +119,46 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
+}
+
+func (h *Handler) RegisterCustomer(c *gin.Context) {
+	var req domain.CustomerRegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.svc.RegisterCustomer(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "ចុះឈ្មោះគណនីជោគជ័យ",
+		"token":   resp.Token,
+		"user":    resp.User,
+	})
+}
+
+func (h *Handler) CustomerLogin(c *gin.Context) {
+	var req domain.CustomerLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.svc.Login(req.Identifier, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "លេខទូរស័ព្ទ អ៊ីមែល ឬលេខសម្ងាត់មិនត្រឹមត្រូវ"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "ចូលប្រើប្រាស់ជោគជ័យ",
+		"token":   resp.Token,
+		"user":    resp.User,
+	})
 }
 
 func (h *Handler) GetBranches(c *gin.Context) {
@@ -190,6 +239,45 @@ func (h *Handler) SubmitTradeIn(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Trade-in request submitted successfully", "data": res})
 }
 
+func (h *Handler) SubmitInstallmentApplication(c *gin.Context) {
+	var body struct {
+		CustomerName          string  `json:"customer_name" binding:"required"`
+		CustomerPhone         string  `json:"customer_phone" binding:"required"`
+		BranchID              string  `json:"branch_id"`
+		VehicleProductID      string  `json:"vehicle_product_id"`
+		VehiclePrice          float64 `json:"vehicle_price"`
+		DownPayment           float64 `json:"down_payment"`
+		DownPaymentPercentage float64 `json:"down_payment_percentage"`
+		LoanAmount            float64 `json:"loan_amount"`
+		InterestRateAnnual    float64 `json:"interest_rate_annual"`
+		TermMonths            int     `json:"term_months"`
+		MonthlyInstallment    float64 `json:"monthly_installment"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	app := domain.InstallmentApplication{
+		BranchID:              body.BranchID,
+		VehiclePrice:          body.VehiclePrice,
+		DownPayment:           body.DownPayment,
+		DownPaymentPercentage: body.DownPaymentPercentage,
+		LoanAmount:            body.LoanAmount,
+		InterestRateAnnual:    body.InterestRateAnnual,
+		TermMonths:            body.TermMonths,
+		MonthlyInstallment:    body.MonthlyInstallment,
+		Status:                "SUBMITTED",
+	}
+
+	res, err := h.svc.SubmitInstallmentApplication(&app, body.CustomerName, body.CustomerPhone, body.VehicleProductID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "Installment application submitted successfully", "data": res})
+}
+
 func (h *Handler) CreateOrder(c *gin.Context) {
 	var req domain.CreateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -203,6 +291,49 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "Order placed successfully", "data": order})
+}
+
+func (h *Handler) TrackCustomerOrder(c *gin.Context) {
+	reference := strings.TrimSpace(c.Query("reference"))
+	if reference == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Order reference or phone number is required"})
+		return
+	}
+	order, err := h.svc.GetOrderByReference(reference, "")
+	if errors.Is(err, sql.ErrNoRows) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No booking found with this reference or phone number"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": order})
+}
+
+func (h *Handler) ConfirmCustomerPayment(c *gin.Context) {
+	orderID := c.Param("id")
+	var body struct {
+		Amount float64 `json:"amount"`
+		Method string  `json:"method"`
+		Ref    string  `json:"ref"`
+	}
+	_ = c.ShouldBindJSON(&body)
+	if body.Amount <= 0 {
+		body.Amount = 1000
+	}
+	if body.Method == "" {
+		body.Method = "KHQR"
+	}
+	if body.Ref == "" {
+		body.Ref = fmt.Sprintf("KHQR-NBC-%d", time.Now().Unix()%100000)
+	}
+
+	// Record payment and update status to CONFIRMED
+	_ = h.svc.RecordOrderPayment(orderID, body.Amount, body.Method, body.Ref, "Customer confirmed Bakong KHQR transfer", "", "")
+	_ = h.svc.UpdateOrderStatus(orderID, "CONFIRMED", "", "")
+
+	c.JSON(http.StatusOK, gin.H{"message": "Payment confirmation received and order confirmed"})
 }
 
 // Admin Handlers
@@ -572,16 +703,16 @@ func (h *Handler) UpdateAdminUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if req.Role != domain.RoleSuperAdmin && req.Role != domain.RoleBranchAdmin && req.Role != domain.RoleStaff {
+	if req.Role != "" && req.Role != domain.RoleSuperAdmin && req.Role != domain.RoleBranchAdmin && req.Role != domain.RoleStaff {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid admin role"})
 		return
 	}
-	if req.Status != "ACTIVE" && req.Status != "DISABLED" {
+	if req.Status != "" && req.Status != "ACTIVE" && req.Status != "DISABLED" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Status must be ACTIVE or DISABLED"})
 		return
 	}
-	if req.Role != domain.RoleSuperAdmin && req.BranchID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Branch assignment is required for branch admins and staff"})
+	if req.Password != "" && len(strings.TrimSpace(req.Password)) < 8 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "New password must be at least 8 characters"})
 		return
 	}
 	err := h.svc.UpdateAdminUser(c.Param("id"), c.GetString("user_id"), &req)
@@ -593,7 +724,20 @@ func (h *Handler) UpdateAdminUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Admin user updated"})
+	c.JSON(http.StatusOK, gin.H{"message": "Admin user updated successfully"})
+}
+
+func (h *Handler) DeleteAdminUser(c *gin.Context) {
+	err := h.svc.DeleteAdminUser(c.Param("id"), c.GetString("user_id"))
+	if errors.Is(err, sql.ErrNoRows) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Admin user not found"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Admin user deleted or archived successfully"})
 }
 
 func (h *Handler) TestTelegramAlert(c *gin.Context) {

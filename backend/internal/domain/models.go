@@ -165,8 +165,11 @@ type CreateUserRequest struct {
 
 type UpdateUserRequest struct {
 	BranchID string   `json:"branch_id"`
-	Status   string   `json:"status" binding:"required"`
-	Role     UserRole `json:"role" binding:"required"`
+	Status   string   `json:"status"`
+	Role     UserRole `json:"role"`
+	FullName string   `json:"full_name"`
+	Phone    string   `json:"phone"`
+	Password string   `json:"password"`
 }
 
 type Customer struct {
@@ -264,6 +267,18 @@ type TradeInRequest struct {
 type LoginRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+type CustomerRegisterRequest struct {
+	FullName string `json:"full_name" binding:"required"`
+	Phone    string `json:"phone" binding:"required"`
+	Email    string `json:"email"`
+	Password string `json:"password" binding:"required"`
+}
+
+type CustomerLoginRequest struct {
+	Identifier string `json:"identifier" binding:"required"` // phone, email, or username
+	Password   string `json:"password" binding:"required"`
 }
 
 type LoginResponse struct {

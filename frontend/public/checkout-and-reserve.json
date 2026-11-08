@@ -1,0 +1,90 @@
+{
+  "checkout_and_reserve": {
+    "title_km": "កក់ទុក ឬទិញយានយន្តរបស់ប្រកបដោយភាពងាយស្រួល",
+    "title_en": "Checkout & Reserve Vehicle",
+    "vehicle_summary": {
+      "image_url": "https://example.com/images/toyota-4runner-2026.png",
+      "brand": "Toyota",
+      "year": 2026,
+      "model_name": "Toyota 4Runner i-FORCE MAX",
+      "sku_or_vin": "TYT-4RNMAX-2026-02",
+      "price": {
+        "amount": 53490,
+        "currency": "USD",
+        "formatted_price": "$53,490"
+      }
+    },
+    "payment_methods": [
+      {
+        "id": "bakong_khqr",
+        "title_km": "Bakong KHQR",
+        "subtitle_km": "វេទូទាត់តាម App ធនាគារនានា",
+        "icon": "khqr_icon",
+        "is_selected": true
+      },
+      {
+        "id": "cash_on_delivery",
+        "title_km": "សាច់ប្រាក់ / ផ្ទេរផ្ទាល់",
+        "subtitle_km": "ទូទាត់នៅសាខាផ្ទាល់ពេលទទួលបានយានយន្ត",
+        "icon": "cash_icon",
+        "is_selected": false
+      },
+      {
+        "id": "loan",
+        "title_km": "បង់រំលស់ (Loan)",
+        "subtitle_km": "បង់ប្រាក់កក់មុន រំលស់ ១២-៧២ ខែ",
+        "icon": "loan_icon",
+        "is_selected": false
+      },
+      {
+        "id": "trade_in",
+        "title_km": "ប្តូរឡានចាស់ (Trade-in)",
+        "subtitle_km": "កាត់កាត់តម្លៃយានយន្តចាស់",
+        "icon": "tradein_icon",
+        "is_selected": false
+      }
+    ],
+    "showroom_branches": [
+      {
+        "id": "branch_001",
+        "name_km": "Phnom Penh Main Showroom (HQ) (Phnom Penh)",
+        "name_en": "Phnom Penh Main Showroom (HQ) (Phnom Penh)",
+        "is_selected": true
+      },
+      {
+        "id": "branch_002",
+        "name_km": "Siem Reap Heritage Showroom (Siem Reap)",
+        "name_en": "Siem Reap Heritage Showroom (Siem Reap)",
+        "is_selected": false
+      },
+      {
+        "id": "branch_003",
+        "name_km": "Battambang Regional Showroom (Battambang)",
+        "name_en": "Battambang Regional Showroom (Battambang)",
+        "is_selected": false
+      }
+    ],
+    "customer_information": {
+      "full_name": {
+        "label_km": "ឈ្មោះអតិថិជន",
+        "placeholder": "ឈ្មោះរបស់អតិថិជន",
+        "required": true
+      },
+      "phone_number": {
+        "label_km": "លេខទូរស័ព្ទ",
+        "placeholder": "+855 12 345 678",
+        "required": true
+      }
+    },
+    "additional_notes": {
+      "label_km": "ចំណាំបន្ថែម (Notes)",
+      "placeholder": "ឧ. ស្នើសុំជួយសម្រួលធ្វើស្លាកលេខជូនខ្ញុំ...",
+      "required": false
+    },
+    "action_button": {
+      "text_km": "បញ្ជាក់ការកក់ប្រាក់ ($53,490)",
+      "text_en": "Confirm Reservation ($53,490)",
+      "action_type": "SUBMIT_RESERVATION"
+    }
+  }
+}

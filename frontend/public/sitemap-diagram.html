@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VehicleHub - Information Architecture Sitemap Diagram</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-orange: #f97316;
+      --primary-orange-light: #fb923c;
+      --primary-orange-border: #fdba74;
+      --orange-bg-subtle: #fff7ed;
+      --slate-bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --line-color: #cbd5e1;
+      --line-active: #f97316;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Kantumruy Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--slate-bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: auto;
+      padding: 40px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Top Control Bar */
+    .control-bar {
+      position: sticky;
+      top: 16px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 8px 16px;
+      border-radius: 9999px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e2e8f0;
+      margin-bottom: 32px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary-orange);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #ea580c;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    /* Diagram Canvas */
+    .diagram-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 1400px;
+      width: 100%;
+      max-width: 1680px;
+      background: #ffffff;
+      padding: 48px 40px 64px 40px;
+      border-radius: 28px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+      border: 1px solid #e2e8f0;
+      position: relative;
+    }
+
+    /* Root Node */
+    .root-node-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      margin-bottom: 40px;
+    }
+
+    .root-node {
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+      color: #ffffff;
+      padding: 16px 40px;
+      border-radius: 14px;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      box-shadow: 0 6px 16px rgba(249, 115, 22, 0.35);
+      border: 2px solid #ffedd5;
+      text-align: center;
+      min-width: 320px;
+      z-index: 10;
+    }
+
+    .root-node .sub-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      opacity: 0.9;
+      margin-top: 2px;
+    }
+
+    /* Main Trunk & Branch Lines SVG */
+    .connectors-svg {
+      width: 100%;
+      height: 60px;
+      margin-bottom: -4px;
+      pointer-events: none;
+    }
+
+    /* Columns Grid */
+    .columns-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 24px;
+      width: 100%;
+      align-items: start;
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Pillar Header (Orange Pill) */
+    .pillar-header {
+      background: var(--primary-orange-light);
+      background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+      color: #ffffff;
+      width: 100%;
+      padding: 14px 12px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
+      border: 1.5px solid #ffedd5;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 5;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .pillar-header:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(249, 115, 22, 0.35);
+    }
+
+    .pillar-header .pillar-kh {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      opacity: 0.92;
+      margin-top: 2px;
+    }
+
+    /* Vertical Spine & Nodes List */
+    .nodes-tree {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      padding-left: 20px;
+      gap: 14px;
+    }
+
+    /* Continuous vertical left spine line */
+    .nodes-tree::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: -24px;
+      bottom: 24px;
+      width: 2px;
+      background: var(--line-color);
+      border-radius: 1px;
+    }
+
+    /* Individual Leaf Node Container with horizontal connecting branch */
+    .node-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    /* Curved horizontal arrow line from spine to node */
+    .node-item::before {
+      content: '';
+      position: absolute;
+      left: -14px;
+      top: 50%;
+      width: 14px;
+      height: 2px;
+      background: var(--line-color);
+    }
+
+    /* Arrow pointer */
+    .node-item::after {
+      content: '';
+      position: absolute;
+      left: -2px;
+      top: calc(50% - 3px);
+      width: 0;
+      height: 0;
+      border-top: 3px solid transparent;
+      border-bottom: 3px solid transparent;
+      border-left: 4px solid var(--line-color);
+    }
+
+    /* Node Card Box (Rounded Rectangle like reference) */
+    .node-box {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1.5px solid var(--primary-orange-border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      text-align: left;
+      line-height: 1.35;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .node-box:hover {
+      border-color: var(--primary-orange);
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.16);
+      transform: translateX(3px);
+      background: var(--orange-bg-subtle);
+    }
+
+    .node-box .node-kh {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .node-box .node-badge {
+      display: inline-block;
+      align-self: flex-start;
+      margin-top: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: #eff6ff;
+      color: #2563eb;
+    }
+
+    /* Footer info */
+    .diagram-footer {
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #f1f5f9;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+      .control-bar {
+        display: none;
+      }
+      .diagram-container {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Controls Bar -->
+  <div class="control-bar">
+    <a href="http://localhost:3000/" class="btn btn-secondary">
+      🏠 ទៅកាន់ Showroom
+    </a>
+    <a href="http://localhost:3000/sitemap" class="btn btn-secondary">
+      📋 Visual Directory (/sitemap)
+    </a>
+    <a href="http://localhost:3000/sitemap.xml" target="_blank" class="btn btn-secondary">
+      📄 XML Sitemap
+    </a>
+    <button onclick="window.print()" class="btn btn-primary">
+      🖨️ បោះពុម្ព / Save as PDF
+    </button>
+  </div>
+
+  <!-- Main Diagram Canvas -->
+  <div class="diagram-container" id="diagram">
+    
+    <!-- Root Header Node -->
+    <div class="root-node-container">
+      <div class="root-node">
+        Information Architecture
+        <span class="sub-label">VehicleHub Automotive Platform 2026</span>
+      </div>
+    </div>
+
+    <!-- Curved Connecting Lines (SVG) -->
+    <svg class="connectors-svg" viewBox="0 0 1400 60" preserveAspectRatio="none">
+      <!-- Main vertical trunk from top root -->
+      <line x1="700" y1="0" x2="700" y2="24" stroke="#f97316" stroke-width="2.5" />
+      
+      <!-- Horizontal crossbar -->
+      <path d="M 116 24 L 1284 24" stroke="#cbd5e1" stroke-width="2" fill="none" />
+      
+      <!-- Center highlight branch -->
+      <line x1="700" y1="24" x2="700" y2="60" stroke="#f97316" stroke-width="2" />
+      
+      <!-- 6 Downward arrows/branches to 6 pillars -->
+      <!-- Pillar 1: Home (x ~ 116) -->
+      <path d="M 116 24 C 116 42, 116 48, 116 60" stroke="#cbd5e1" stroke-width="2" fill="none" />
+      <!-- Pillar 2: Lineup (x ~ 350) -->
+      <path d="M 350 24 C 350 42, 350 48, 350 60" stroke="#cbd5e1" stroke-width="2" fill="none" />
+      <!-- Pillar 3: Tools (x ~ 583) -->
+      <path d="M 583 24 C 583 42, 583 48, 583 60" stroke="#cbd5e1" stroke-width="2" fill="none" />
+      <!-- Pillar 4: Showrooms (x ~ 816) -->
+      <path d="M 816 24 C 816 42, 816 48, 816 60" stroke="#cbd5e1" stroke-width="2" fill="none" />
+      <!-- Pillar 5: AI & Care (x ~ 1050) -->
+      <path d="M 1050 24 C 1050 42, 1050 48, 1050 60" stroke="#cbd5e1" stroke-width="2" fill="none" />
+      <!-- Pillar 6: Financing (x ~ 1284) -->
+      <path d="M 1284 24 C 1284 42, 1284 48, 1284 60" stroke="#cbd5e1" stroke-width="2" fill="none" />
+    </svg>
+
+    <!-- 6 Columns Architecture Grid -->
+    <div class="columns-grid">
+      
+      <!-- Column 1: Home / Showroom -->
+      <div class="column">
+        <div class="pillar-header">
+          Home / Showroom
+          <span class="pillar-kh">ទំព័រដើម & តាំងបង្ហាញ</span>
+        </div>
+        <div class="nodes-tree">
+          <div class="node-item">
+            <div class="node-box">
+              <span>Hero 3D Stage Carousel</span>
+              <span class="node-kh">ផ្ទាំងបញ្ចាំងរថយន្ត 3D</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Brand Selector Bar</span>
+              <span class="node-kh">រើសម៉ាក Toyota, BMW...</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Search Bar & Shortcut (Ctrl+K)</span>
+              <span class="node-kh">ស្វែងរករហ័ស</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Category Filter Tabs</span>
+              <span class="node-kh">ចម្រាញ់តាមប្រភេទ</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Vehicle Inventory Grid</span>
+              <span class="node-kh">តារាងរថយន្ត 44+ គ្រឿង</span>
+              <span class="node-badge">44 Models</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Quick Spec Modal</span>
+              <span class="node-kh">ព័ត៌មានបច្ចេកទេសរហ័ស</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Special Offers Banner</span>
+              <span class="node-kh">ប្រូម៉ូសិន & កាដូថែម</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Footer Directory</span>
+              <span class="node-kh">តំណភ្ជាប់ និងផែនទីគេហទំព័រ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 2: Vehicle Lineup & Categories -->
+      <div class="column">
+        <div class="pillar-header">
+          Vehicle Lineup
+          <span class="pillar-kh">កាតាឡុក & ប្រភេទរថយន្ត</span>
+        </div>
+        <div class="nodes-tree">
+          <div class="node-item">
+            <div class="node-box">
+              <span>Electric & Hybrid (EVs)</span>
+              <span class="node-kh">រថយន្តអគ្គិសនី & កូនកាត់</span>
+              <span class="node-badge">25 Models</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Gasoline SUVs & Trucks</span>
+              <span class="node-kh">SUV និង ភីកអាប់សាំង</span>
+              <span class="node-badge">17 Models</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Toyota 2026 Official Lineup</span>
+              <span class="node-kh">ស៊េរី Toyota ពេញលេញ</span>
+              <span class="node-badge">27 Models</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Electric Bicycles (E-Bikes)</span>
+              <span class="node-kh">កង់អគ្គិសនី Specialized</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Genuine Spare Parts</span>
+              <span class="node-kh">គ្រឿងបន្លាស់ & ហ្វ្រាំង Brembo</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Engine & MPG Specs</span>
+              <span class="node-kh">កម្លាំងសេះ & កម្រិតស៊ីសាំង</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Exterior Color Swatches</span>
+              <span class="node-kh">ជម្រើសពណ៌រោងចក្រ ៨ ពណ៌</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 3: Interactive Automotive Tools -->
+      <div class="column">
+        <div class="pillar-header">
+          Automotive Tools
+          <span class="pillar-kh">ឧបករណ៍ឌីជីថលឆ្លាតវៃ</span>
+        </div>
+        <div class="nodes-tree">
+          <div class="node-item">
+            <div class="node-box">
+              <span>360° Studio Configurator</span>
+              <span class="node-kh">ពិនិត្យមើលមួយតួខ្លួន 360°</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>6 Camera View Angles</span>
+              <span class="node-kh">មុខ, ក្រោយ, ចំហៀង, ខាងក្នុង</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Wheels & Brembo Calipers</span>
+              <span class="node-kh">ជ្រើសរើសយ៉ាន់កង់ & ហ្វ្រាំង</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Loan & Financing Calc</span>
+              <span class="node-kh">គណនាការបង់រំលស់</span>
+              <span class="node-badge">12 - 72 Mo</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Multi-Brand Trade-In</span>
+              <span class="node-kh">វាយប្តូររថយន្តចាស់</span>
+              <span class="node-badge">20-Min Appraisal</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Test Drive Scheduler</span>
+              <span class="node-kh">កក់បើកបរសាកល្បងឥតគិតថ្លៃ</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Visual Sitemap Page</span>
+              <span class="node-kh">ផែនទីគេហទំព័រ (/sitemap)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 4: Showrooms & Branches -->
+      <div class="column">
+        <div class="pillar-header">
+          Showrooms
+          <span class="pillar-kh">សាខា Showroom ទូទាំងប្រទេស</span>
+        </div>
+        <div class="nodes-tree">
+          <div class="node-item">
+            <div class="node-box">
+              <span>Phnom Penh Flagship HQ</span>
+              <span class="node-kh">មហាវិថីសហព័ន្ធរុស្ស៊ី</span>
+              <span class="node-badge">BR-PP-01</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Siem Reap Heritage Branch</span>
+              <span class="node-kh">ផ្លូវជាតិលេខ ៦ (ជិតផ្សារលើ)</span>
+              <span class="node-badge">BR-SR-02</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Battambang Regional Branch</span>
+              <span class="node-kh">រង្វង់មូលលោកតាដំបងក្រញូង</span>
+              <span class="node-badge">BR-BB-03</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Real-Time Branch Stock</span>
+              <span class="node-kh">ពិនិត្យស្តុកឡានតាមសាខា</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Opening Hours & Contacts</span>
+              <span class="node-kh">ម៉ោងធ្វើការ 8AM - 7:30PM</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Branch Test-Drive Fleet</span>
+              <span class="node-kh">កងរថយន្តបើកបរសាកល្បង</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 5: AI Advisor & Support -->
+      <div class="column">
+        <div class="pillar-header">
+          AI & Support
+          <span class="pillar-kh">ជំនួយការ AI & សេវាកម្ម</span>
+        </div>
+        <div class="nodes-tree">
+          <div class="node-item">
+            <div class="node-box">
+              <span>AI Sales Consultant (វិបុល)</span>
+              <span class="node-kh">ទីប្រឹក្សាជាន់ខ្ពស់ផ្នែកលក់</span>
+              <span class="node-badge">Vibol 24/7</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Khmer Conversational AI</span>
+              <span class="node-kh">យល់ភាសាខ្មែរគ្រប់បរិបទ</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Family Passenger Advisor</span>
+              <span class="node-kh">ណែនាំឡានគ្រួសារ ៥ vs ៧ នាក់</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Color Matching Engine</span>
+              <span class="node-kh">ស្គាល់ពណ៌ក្រហម, ស, ខ្មៅ...</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Telegram Concierge</span>
+              <span class="node-kh">ឆានែលពិគ្រោះយោបល់ផ្ទាល់</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Official XML Sitemap</span>
+              <span class="node-kh">ឯកសារ /sitemap.xml (SEO)</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Robots Crawler Policy</span>
+              <span class="node-kh">គោលការណ៍ /robots.txt</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 6: Financing & Orders -->
+      <div class="column">
+        <div class="pillar-header">
+          Financing & Order
+          <span class="pillar-kh">ការបង់ប្រាក់ & បង់រំលស់</span>
+        </div>
+        <div class="nodes-tree">
+          <div class="node-item">
+            <div class="node-box">
+              <span>Bakong KHQR Checkout</span>
+              <span class="node-kh">ទូទាត់រហ័ស (USD & KHR)</span>
+              <span class="node-badge">NBC Standard</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Down Payment Selector</span>
+              <span class="node-kh">បង់មុន 10%, 20%, 30%, 50%</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Installment Terms</span>
+              <span class="node-kh">រយៈពេលបង់រហូតដល់ ៧ ឆ្នាំ</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Trade-In Equity Offset</span>
+              <span class="node-kh">កាត់ប្រាក់កក់ពីឡានចាស់</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Order Receipt & Tracking</span>
+              <span class="node-kh">បង្កាន់ដៃ និងតាមដានការកក់</span>
+            </div>
+          </div>
+          <div class="node-item">
+            <div class="node-box">
+              <span>Admin ERP Management</span>
+              <span class="node-kh">ប្រព័ន្ធគ្រប់គ្រងស្តុក & ការលក់</span>
+              <span class="node-badge">Staff ERP</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Diagram Footer -->
+    <div class="diagram-footer">
+      <div>
+        <strong>VehicleHub Automotive E-Commerce Platform</strong> • Official Architecture Map
+      </div>
+      <div>
+        Designed for High-Performance Scalability, Multi-Branch Inventory & Next.js App Router
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

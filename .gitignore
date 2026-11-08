@@ -1,0 +1,52 @@
+# Binaries & Executables
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+backend/api
+backend/api.exe
+backend/api.exe~
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+.pnp
+.pnp.js
+
+# Next.js Build Outputs
+.next/
+frontend/.next/
+out/
+frontend/out/
+build/
+frontend/build/
+
+# Environment variables
+backend/.env.local
+backend/.env.*.local
+frontend/.env*.local
+*.env
+!backend/.env.example
+!frontend/.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+.docker/
+

@@ -1,0 +1,28 @@
+{
+  "cart": {
+    "cart_id": "cart_123456",
+    "customer_id": "user_789",
+    "items": [
+      {
+        "cart_item_id": "item_001",
+        "product_id": "prod_taicoma_2026",
+        "product_name": "Toyota Tacoma 2026",
+        "selected_variant": {
+          "color": "Blue",
+          "trim": "TRD Off-Road"
+        },
+        "unit_price": 38500,
+        "quantity": 1,
+        "total_price": 38500,
+        "image_url": "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=800&auto=format&fit=crop&q=80"
+      }
+    ],
+    "summary": {
+      "subtotal": 38500,
+      "discount_amount": 0,
+      "estimated_shipping": 500,
+      "grand_total": 39000,
+      "currency": "USD"
+    }
+  }
+}

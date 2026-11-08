@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 	"time"
 
 	"vehicle-commerce/backend/internal/config"
@@ -41,6 +42,38 @@ func (s *Service) Login(username, password string) (*domain.LoginResponse, error
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		return nil, fmt.Errorf("invalid credentials")
+	}
+
+	token, err := s.GenerateToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.LoginResponse{
+		Token: token,
+		User:  *user,
+	}, nil
+}
+
+func (s *Service) RegisterCustomer(req *domain.CustomerRegisterRequest) (*domain.LoginResponse, error) {
+	if strings.TrimSpace(req.FullName) == "" {
+		return nil, fmt.Errorf("សូមបញ្ចូលឈ្មោះពេញ (Full name is required)")
+	}
+	if strings.TrimSpace(req.Phone) == "" {
+		return nil, fmt.Errorf("សូមបញ្ចូលលេខទូរស័ព្ទ (Phone number is required)")
+	}
+	if len(req.Password) < 4 {
+		return nil, fmt.Errorf("លេខសម្ងាត់ត្រូវមានយ៉ាងហោចណាស់ ៤ តួអក្សរ (Password must be at least 4 characters)")
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := s.repo.RegisterCustomer(req, string(hash))
+	if err != nil {
+		return nil, err
 	}
 
 	token, err := s.GenerateToken(user)
@@ -169,6 +202,48 @@ func (s *Service) SubmitTradeIn(req *domain.TradeInRequest) (*domain.TradeInRequ
 	return req, nil
 }
 
+// 4.1 Installment Loan Application Submission
+func (s *Service) SubmitInstallmentApplication(app *domain.InstallmentApplication, customerName, customerPhone, vehicleProductID string) (*domain.InstallmentApplication, error) {
+	if app.VehiclePrice <= 0 {
+		app.VehiclePrice = 35000.00
+	}
+	if app.DownPaymentPercentage <= 0 {
+		app.DownPaymentPercentage = 20.0
+	}
+	if app.DownPayment <= 0 {
+		app.DownPayment = app.VehiclePrice * (app.DownPaymentPercentage / 100.0)
+	}
+	if app.LoanAmount <= 0 {
+		app.LoanAmount = app.VehiclePrice - app.DownPayment
+	}
+	if app.InterestRateAnnual <= 0 {
+		app.InterestRateAnnual = 8.5
+	}
+	if app.TermMonths <= 0 {
+		app.TermMonths = 36
+	}
+	if app.MonthlyInstallment <= 0 {
+		r := (app.InterestRateAnnual / 100.0) / 12.0
+		n := float64(app.TermMonths)
+		if r > 0 {
+			factor := math.Pow(1.0+r, n)
+			app.MonthlyInstallment = math.Round((app.LoanAmount * (r * factor) / (factor - 1.0)) * 100) / 100
+		} else {
+			app.MonthlyInstallment = math.Round((app.LoanAmount / n) * 100) / 100
+		}
+	}
+
+	err := s.repo.CreateInstallmentApp(app, customerName, customerPhone, vehicleProductID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Notify staff via Telegram
+	s.logNotification("NEW_INSTALLMENT_APPLICATION", app.ID, s.bot.NotifyLoanApplication(app))
+
+	return app, nil
+}
+
 // 5. Inter-Branch Transfer
 func (s *Service) InterBranchTransfer(req *domain.InterBranchTransferRequest) error {
 	err := s.repo.TransferInventory(req)
@@ -244,7 +319,22 @@ func (s *Service) CreateAdminUser(req *domain.CreateUserRequest) (*domain.User, 
 }
 
 func (s *Service) UpdateAdminUser(id, actorID string, req *domain.UpdateUserRequest) error {
-	return s.repo.UpdateAdminUser(id, actorID, req)
+	var passwordHash string
+	if strings.TrimSpace(req.Password) != "" {
+		if len(req.Password) < 8 {
+			return fmt.Errorf("password must be at least 8 characters")
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		passwordHash = string(hash)
+	}
+	return s.repo.UpdateAdminUser(id, actorID, req, passwordHash)
+}
+
+func (s *Service) DeleteAdminUser(id, actorID string) error {
+	return s.repo.DeleteAdminUser(id, actorID)
 }
 
 // Pass-through getters

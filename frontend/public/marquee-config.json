@@ -1,0 +1,102 @@
+{
+  "speed": 100,
+  "categories": [
+    {
+      "id": "all",
+      "name": "ទាំងអស់ (All Products)",
+      "iconKey": "all"
+    },
+    {
+      "id": "suv",
+      "name": "SUV & Crossover",
+      "iconKey": "suv"
+    },
+    {
+      "id": "sedan",
+      "name": "Sedan & Sport",
+      "iconKey": "sedan"
+    },
+    {
+      "id": "truck",
+      "name": "Truck & Pickup",
+      "iconKey": "truck"
+    },
+    {
+      "id": "ev",
+      "name": "Electric & Hybrid",
+      "iconKey": "ev"
+    },
+    {
+      "id": "minivan",
+      "name": "Minivan & Family",
+      "iconKey": "minivan"
+    },
+    {
+      "id": "ebike",
+      "name": "កង់អគ្គិសនី (E-Bikes)",
+      "iconKey": "ebike"
+    },
+    {
+      "id": "parts",
+      "name": "គ្រឿងបន្លាស់ (Parts)",
+      "iconKey": "parts"
+    }
+  ],
+  "brands": [
+    {
+      "id": "all",
+      "name": "គ្រប់ប្រេន (All Brands)",
+      "iconKey": "sparkles"
+    },
+    {
+      "id": "Toyota",
+      "name": "Toyota",
+      "iconKey": "Toyota"
+    },
+    {
+      "id": "Lexus",
+      "name": "Lexus",
+      "iconKey": "Lexus"
+    },
+    {
+      "id": "Ford",
+      "name": "Ford",
+      "iconKey": "Ford"
+    },
+    {
+      "id": "BYD",
+      "name": "BYD",
+      "iconKey": "BYD"
+    },
+    {
+      "id": "Tesla",
+      "name": "Tesla",
+      "iconKey": "Tesla"
+    },
+    {
+      "id": "Hyundai",
+      "name": "Hyundai",
+      "iconKey": "Hyundai"
+    },
+    {
+      "id": "Kia",
+      "name": "KIA",
+      "iconKey": "Kia"
+    },
+    {
+      "id": "BMW",
+      "name": "BMW",
+      "iconKey": "BMW"
+    },
+    {
+      "id": "Mercedes-Benz",
+      "name": "Mercedes",
+      "iconKey": "Mercedes-Benz"
+    },
+    {
+      "id": "Peugeot",
+      "name": "Peugeot",
+      "iconKey": "Peugeot"
+    }
+  ]
+}

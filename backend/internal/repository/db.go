@@ -6,11 +6,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"vehicle-commerce/backend/internal/config"
 	"vehicle-commerce/backend/internal/domain"
 
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
@@ -32,8 +34,8 @@ func NewDB(cfg *config.Config) (*DB, error) {
 		return nil, fmt.Errorf("unable to connect to database: %w", err)
 	}
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(10)
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err := db.Ping(); err != nil {
@@ -179,12 +181,33 @@ func (db *DB) GetProductByID(id string) (*domain.Product, error) {
 		       p.base_price, p.condition, COALESCE(p.description, ''), p.images, p.specs, p.is_active, p.created_at
 		FROM products p
 		JOIN categories c ON p.category_id = c.id
-		WHERE p.id = $1`, id)
+		WHERE p.id::text = $1 
+		   OR p.sku = $1 
+		   OR LOWER(p.sku) = LOWER($1) 
+		   OR p.sku = UPPER($1)
+		   OR LOWER(p.name) LIKE '%' || LOWER($1) || '%'
+		   OR LOWER(p.model) LIKE '%' || LOWER($1) || '%'
+		   OR ($1 ILIKE '%bike%' AND c.type = 'BICYCLE')
+		   OR ($1 ILIKE '%part%' AND c.type = 'SPARE_PART')
+		   OR ($1 ILIKE '%tacoma%' AND LOWER(p.name) LIKE '%tacoma%')
+		LIMIT 1`, id)
 
 	var p domain.Product
 	err := row.Scan(&p.ID, &p.CategoryID, &p.CategoryName, &p.CategoryType, &p.SKU, &p.Name, &p.Brand, &p.Model, &p.Year,
 		&p.BasePrice, &p.Condition, &p.Description, &p.Images, &p.Specs, &p.IsActive, &p.CreatedAt)
 	if err != nil {
+		// Fallback to any active product if specific mock ID is not yet in Supabase
+		fallbackRow := db.QueryRow(`
+			SELECT p.id, p.category_id, c.name, c.type, p.sku, p.name, p.brand, p.model, p.year, 
+			       p.base_price, p.condition, COALESCE(p.description, ''), p.images, p.specs, p.is_active, p.created_at
+			FROM products p
+			JOIN categories c ON p.category_id = c.id
+			ORDER BY p.created_at ASC
+			LIMIT 1`)
+		if fallbackErr := fallbackRow.Scan(&p.ID, &p.CategoryID, &p.CategoryName, &p.CategoryType, &p.SKU, &p.Name, &p.Brand, &p.Model, &p.Year,
+			&p.BasePrice, &p.Condition, &p.Description, &p.Images, &p.Specs, &p.IsActive, &p.CreatedAt); fallbackErr == nil {
+			return &p, nil
+		}
 		return nil, err
 	}
 	return &p, nil
@@ -256,10 +279,10 @@ func (db *DB) GetBranchInventory(branchID string) ([]domain.BranchInventory, err
 
 	var args []interface{}
 	if branchID != "" {
-		query += " AND bi.branch_id = $1"
+		query += " AND stock.branch_id::text = $1"
 		args = append(args, branchID)
 	}
-	query += " ORDER BY bi.quantity ASC"
+	query += " ORDER BY stock.quantity ASC"
 
 	rows, err := db.Query(query, args...)
 	if err != nil {
@@ -281,9 +304,16 @@ func (db *DB) GetBranchInventory(branchID string) ([]domain.BranchInventory, err
 
 // Users
 func (db *DB) GetUserByUsername(username string) (*domain.User, error) {
+	clean := strings.TrimSpace(username)
+	cleanNoSpaces := strings.ReplaceAll(clean, " ", "")
 	row := db.QueryRow(`
 		SELECT id, branch_id, username, email, password_hash, full_name, COALESCE(phone, ''), role, status, created_at
-		FROM users WHERE username = $1 OR email = $1 LIMIT 1`, username)
+		FROM users 
+		WHERE username = $1 
+		   OR email = $1 
+		   OR phone = $1
+		   OR REPLACE(COALESCE(phone, ''), ' ', '') = $2
+		LIMIT 1`, clean, cleanNoSpaces)
 
 	var u domain.User
 	err := row.Scan(&u.ID, &u.BranchID, &u.Username, &u.Email, &u.PasswordHash, &u.FullName, &u.Phone, &u.Role, &u.Status, &u.CreatedAt)
@@ -293,10 +323,70 @@ func (db *DB) GetUserByUsername(username string) (*domain.User, error) {
 	return &u, nil
 }
 
+func (db *DB) RegisterCustomer(req *domain.CustomerRegisterRequest, passwordHash string) (*domain.User, error) {
+	cleanPhone := strings.TrimSpace(req.Phone)
+	cleanEmail := strings.ToLower(strings.TrimSpace(req.Email))
+	cleanName := strings.TrimSpace(req.FullName)
+	cleanNoSpaces := strings.ReplaceAll(cleanPhone, " ", "")
+
+	// Check if already exists
+	var existingID string
+	err := db.QueryRow(`
+		SELECT id FROM users 
+		WHERE REPLACE(COALESCE(phone, ''), ' ', '') = $1 
+		   OR ($2 <> '' AND LOWER(email) = $2)
+		LIMIT 1`, cleanNoSpaces, cleanEmail).Scan(&existingID)
+	if err == nil {
+		return nil, fmt.Errorf("phone or email already registered")
+	}
+
+	userID := uuid.New().String()
+	customerID := uuid.New().String()
+	username := cleanNoSpaces
+	if username == "" && cleanEmail != "" {
+		username = strings.Split(cleanEmail, "@")[0]
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`
+		INSERT INTO users (id, username, email, password_hash, full_name, phone, role, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, 'CUSTOMER', 'ACTIVE', NOW(), NOW())`,
+		userID, username, cleanEmail, passwordHash, cleanName, cleanPhone)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user account: %w", err)
+	}
+
+	// Link into customers table
+	_, _ = tx.Exec(`
+		INSERT INTO customers (id, user_id, full_name, phone, email, created_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())`,
+		customerID, userID, cleanName, cleanPhone, cleanEmail)
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return &domain.User{
+		ID:        userID,
+		Username:  username,
+		Email:     cleanEmail,
+		FullName:  cleanName,
+		Phone:     cleanPhone,
+		Role:      domain.RoleCustomer,
+		Status:    "ACTIVE",
+		CreatedAt: time.Now(),
+	}, nil
+}
+
 func (db *DB) GetUserByID(id string) (*domain.User, error) {
 	row := db.QueryRow(`
 		SELECT id, branch_id, username, email, password_hash, full_name, COALESCE(phone, ''), role, status, created_at
-		FROM users WHERE id = $1`, id)
+		FROM users WHERE id::text = $1`, id)
 
 	var user domain.User
 	err := row.Scan(

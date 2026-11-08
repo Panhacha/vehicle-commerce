@@ -1,0 +1,38 @@
+services:
+  # Go Backend Web Service
+  - type: web
+    name: vehicle-commerce-api
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: DB_HOST
+        value: aws-0-eu-west-1.pooler.supabase.com
+      - key: DB_PORT
+        value: 5432
+      - key: DB_USER
+        value: postgres.zqahyyumpbgzurrfbier
+      - key: DB_PASSWORD
+        value: 3A8JrmqWFTbUFrh4
+      - key: DB_NAME
+        value: postgres
+      - key: DB_SSLMODE
+        value: require
+      - key: DATABASE_URL
+        value: postgresql://postgres.zqahyyumpbgzurrfbier:3A8JrmqWFTbUFrh4@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require
+      - key: SUPABASE_URL
+        value: https://zqahyyumpbgzurrfbier.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxYWh5eXVtcGJnenVycmZiaWVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyODU0ODgsImV4cCI6MjEwODg2MTQ4OH0.nats4C74b5yq3gDwE0Dz85yyHxqLdkFr4ZC6DN2GW_k
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxYWh5eXVtcGJnenVycmZiaWVyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzI4NTQ4OCwiZXhwIjoyMTA4ODYxNDg4fQ.3DojAiyhYl6ZyfNqFbVSmCYLfLH-dzezFjz_LsXz98Y
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://your-frontend-domain.vercel.app
+

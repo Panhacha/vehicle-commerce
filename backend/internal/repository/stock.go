@@ -231,12 +231,28 @@ func (db *DB) GetStockMovements(branchID, fromDate, toDate string) ([]domain.Sto
 		JOIN branches b ON b.id = sm.branch_id
 		JOIN products p ON p.id = sm.product_id
 		LEFT JOIN users u ON u.id = sm.performed_by_user_id
-		WHERE ($1 = '' OR sm.branch_id = $1)
-		  AND ($2 = '' OR sm.created_at >= $2::date)
-		  AND ($3 = '' OR sm.created_at < ($3::date + INTERVAL '1 day'))
-		ORDER BY sm.created_at DESC
-		LIMIT 1000`
-	rows, err := db.Query(query, branchID, fromDate, toDate)
+		WHERE 1=1`
+
+	var args []interface{}
+	idx := 1
+	if branchID != "" {
+		query += fmt.Sprintf(" AND sm.branch_id::text = $%d", idx)
+		args = append(args, branchID)
+		idx++
+	}
+	if fromDate != "" {
+		query += fmt.Sprintf(" AND sm.created_at >= $%d::date", idx)
+		args = append(args, fromDate)
+		idx++
+	}
+	if toDate != "" {
+		query += fmt.Sprintf(" AND sm.created_at < ($%d::date + INTERVAL '1 day')", idx)
+		args = append(args, toDate)
+		idx++
+	}
+	query += " ORDER BY sm.created_at DESC LIMIT 1000"
+
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

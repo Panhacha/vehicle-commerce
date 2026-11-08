@@ -44,14 +44,21 @@ func (db *DB) CreateAdminUser(req *domain.CreateUserRequest, passwordHash string
 		Role:     req.Role,
 		Status:   "ACTIVE",
 	}
-	if req.BranchID != "" {
-		user.BranchID = &req.BranchID
+
+	var branchUUID *string
+	trimmedBranch := strings.TrimSpace(req.BranchID)
+	if trimmedBranch != "" {
+		if _, err := uuid.Parse(trimmedBranch); err == nil {
+			branchUUID = &trimmedBranch
+			user.BranchID = branchUUID
+		}
 	}
+
 	err := db.QueryRow(`
 		INSERT INTO users (id, branch_id, username, email, password_hash, full_name, phone, role, status)
-		VALUES ($1, NULLIF($2, '')::uuid, $3, $4, $5, $6, NULLIF($7, ''), $8, 'ACTIVE')
+		VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8, 'ACTIVE')
 		RETURNING created_at`,
-		user.ID, req.BranchID, user.Username, user.Email, passwordHash, user.FullName, user.Phone, user.Role,
+		user.ID, branchUUID, user.Username, user.Email, passwordHash, user.FullName, user.Phone, user.Role,
 	).Scan(&user.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -59,14 +66,41 @@ func (db *DB) CreateAdminUser(req *domain.CreateUserRequest, passwordHash string
 	return user, nil
 }
 
-func (db *DB) UpdateAdminUser(id, actorID string, req *domain.UpdateUserRequest) error {
-	if id == actorID {
-		return fmt.Errorf("you cannot change your own role or disable your account")
+func (db *DB) UpdateAdminUser(id, actorID string, req *domain.UpdateUserRequest, passwordHash string) error {
+	if id == actorID && (req.Status == "DISABLED" || (req.Role != "" && req.Role != domain.RoleSuperAdmin)) {
+		return fmt.Errorf("you cannot change your own role or disable your own account")
 	}
-	result, err := db.Exec(`
-		UPDATE users SET branch_id = NULLIF($1, '')::uuid, role = $2, status = $3, updated_at = NOW()
-		WHERE id = $4 AND role <> 'CUSTOMER'`,
-		req.BranchID, req.Role, req.Status, id)
+
+	var branchUUID *string
+	trimmedBranch := strings.TrimSpace(req.BranchID)
+	hasBranch := trimmedBranch != "" || req.Role == domain.RoleSuperAdmin
+	if trimmedBranch != "" {
+		if _, err := uuid.Parse(trimmedBranch); err == nil {
+			branchUUID = &trimmedBranch
+		}
+	}
+
+	query := `
+		UPDATE users 
+		SET branch_id = CASE WHEN $1 = TRUE THEN $2::uuid ELSE branch_id END,
+		    role = CASE WHEN $3 <> '' THEN $3::user_role ELSE role END,
+		    status = CASE WHEN $4 <> '' THEN $4 ELSE status END,
+		    full_name = CASE WHEN $5 <> '' THEN $5 ELSE full_name END,
+		    phone = CASE WHEN $6 = TRUE THEN NULLIF($7, '') ELSE phone END,
+		    password_hash = CASE WHEN $8 <> '' THEN $8 ELSE password_hash END,
+		    updated_at = NOW()
+		WHERE id = $9 AND role <> 'CUSTOMER'`
+
+	hasPhone := req.Phone != ""
+	result, err := db.Exec(query,
+		hasBranch, branchUUID,
+		string(req.Role),
+		req.Status,
+		strings.TrimSpace(req.FullName),
+		hasPhone, strings.TrimSpace(req.Phone),
+		passwordHash,
+		id,
+	)
 	if err != nil {
 		return err
 	}
@@ -75,6 +109,32 @@ func (db *DB) UpdateAdminUser(id, actorID string, req *domain.UpdateUserRequest)
 		return err
 	}
 	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (db *DB) DeleteAdminUser(id, actorID string) error {
+	if id == actorID {
+		return fmt.Errorf("you cannot delete your own account")
+	}
+
+	// Attempt deletion; if constrained by foreign keys, soft-delete to DISABLED
+	result, err := db.Exec(`DELETE FROM users WHERE id = $1 AND role <> 'CUSTOMER'`, id)
+	if err == nil {
+		affected, _ := result.RowsAffected()
+		if affected > 0 {
+			return nil
+		}
+	}
+
+	// Fallback to soft-deactivation if referenced elsewhere
+	res2, err2 := db.Exec(`UPDATE users SET status = 'DISABLED', updated_at = NOW() WHERE id = $1 AND role <> 'CUSTOMER'`, id)
+	if err2 != nil {
+		return err2
+	}
+	affected2, _ := res2.RowsAffected()
+	if affected2 == 0 {
 		return sql.ErrNoRows
 	}
 	return nil
@@ -98,10 +158,22 @@ func (db *DB) GetInstallmentSchedules(branchID, status string) ([]domain.Install
 		JOIN customers c ON c.id = ps.customer_id
 		JOIN orders o ON o.id = ia.order_id
 		JOIN branches b ON b.id = ia.branch_id
-		WHERE ($1 = '' OR ia.branch_id = $1)
-		  AND ($2 = '' OR ps.status = $2)
-		ORDER BY ps.due_date ASC`
-	rows, err := db.Query(query, branchID, status)
+		WHERE 1=1`
+
+	var args []interface{}
+	idx := 1
+	if branchID != "" {
+		query += fmt.Sprintf(" AND ia.branch_id::text = $%d", idx)
+		args = append(args, branchID)
+		idx++
+	}
+	if status != "" {
+		query += fmt.Sprintf(" AND ps.status = $%d", idx)
+		args = append(args, status)
+		idx++
+	}
+	query += " ORDER BY ps.due_date ASC"
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +207,7 @@ func (db *DB) GetInstallmentScheduleByID(id, branchID string) (*domain.Installme
 		JOIN customers c ON c.id = ps.customer_id
 		JOIN orders o ON o.id = ia.order_id
 		JOIN branches b ON b.id = ia.branch_id
-		WHERE ps.id = $1 AND ($2 = '' OR ia.branch_id = $2)`,
+		WHERE ps.id::text = $1 AND ($2 = '' OR ia.branch_id::text = $2)`,
 		id, branchID,
 	).Scan(
 		&schedule.ID, &schedule.CustomerID, &schedule.CustomerName, &schedule.OrderNo,
